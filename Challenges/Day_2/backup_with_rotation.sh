@@ -1,8 +1,15 @@
 #!/bin/bash
 
+<<note
+This is a script for backup with 3 day rotation
+
+Usage:
+./backup-with-rotation.sh <path to your source> <Path to your backup directory>
+note
+
 # Function to display usage information and available options
 function display_usage {
-    echo "Usage: $0 /path/to/source_directory"
+        echo "Usage:./backup-with-rotation.sh <path to your source> <Path to your backup directory>"
 }
 
 # Check if a valid directory path is provided as a command-line argument
@@ -12,28 +19,30 @@ if [ $# -eq 0 ] || [ ! -d "$1" ]; then
     exit 1
 fi
 
-# Directory path of the source directory to be backed up
-source_dir="$1"
+source_dir=$1
+backup_dir=$2
+timestamp=$(date '+%Y-%m-%d-%H-%M-%S')
 
 # Function to create a timestamped backup folder
 function create_backup {
-    local timestamp=$(date '+%Y-%m-%d_%H-%M-%S')  # Get the current timestamp
-    local backup_dir="${source_dir}/backup_${timestamp}"
-
-    # Create the backup folder with the timestamped name
-    mkdir "$backup_dir"
-    echo "Backup created successfully: $backup_dir"
+        zip -r "${backup_dir}/backup_${timestamp}.zip" "${source_dir}" > /dev/null
+        if [ $? -eq 0 ]; then
+                echo "backup generated successfully for ${timestamp}"
+        fi
 }
 
 # Function to perform the rotation and keep only the last 3 backups
 function perform_rotation {
-    local backups=($(ls -t "${source_dir}/backup_"* 2>/dev/null))  # List existing backups sorted by timestamp
+        backups=($(ls -t "${backup_dir}/backup_"*.zip 2>/dev/null))
 
-    # Check if there are more than 3 backups
-    if [ "${#backups[@]}" -gt 3 ]; then
-        local backups_to_remove="${backups[@]:3}"  # Get backups beyond the last 3
-        rm -rf "${backups_to_remove[@]}"  # Remove the oldest backups
-    fi
+        if [ "${#backups[@]}" -gt 3 ]; then
+                echo "performing rotation for 3 days"
+                backups_to_remove=("${backups[@]:3}")
+                for backup in "${backups_to_remove[@]}";
+                do
+                        rm -f ${backup}
+                done
+        fi
 }
 
 # Main script logic
